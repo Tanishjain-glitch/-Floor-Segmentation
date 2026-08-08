@@ -23,9 +23,9 @@ def parse_args():
                         help='model name (default: fast_scnn)')
     parser.add_argument('--dataset', type=str, default='citys',
                         help='dataset name (default: citys)')
-    parser.add_argument('--base-size', type=int, default=1024,
+    parser.add_argument('--base-size', type=int, default=512,
                         help='base image size')
-    parser.add_argument('--crop-size', type=int, default=768,
+    parser.add_argument('--crop-size', type=int, default=512,
                         help='crop image size')
     parser.add_argument('--train-split', type=str, default='train',
                         help='dataset train split (default: train)')
@@ -34,14 +34,14 @@ def parse_args():
                         help='Auxiliary loss')
     parser.add_argument('--aux-weight', type=float, default=0.4,
                         help='auxiliary loss weight')
-    parser.add_argument('--epochs', type=int, default=160, metavar='N',
-                        help='number of epochs to train (default: 100)')
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
+                        help='number of epochs')
     parser.add_argument('--start_epoch', type=int, default=0,
                         metavar='N', help='start epochs (default:0)')
-    parser.add_argument('--batch-size', type=int, default=2,
-                        metavar='N', help='input batch size for training (default: 12)')
-    parser.add_argument('--lr', type=float, default=1e-2, metavar='LR',
-                        help='learning rate (default: 1e-2)')
+    parser.add_argument('--batch-size', type=int, default=8,
+                        metavar='N', help='batch size')
+    parser.add_argument('--lr', type=float, default=1e-3, metavar='LR',
+                        help='learning rate')
     parser.add_argument('--momentum', type=float, default=0.9,
                         metavar='M', help='momentum (default: 0.9)')
     parser.add_argument('--weight-decay', type=float, default=1e-4,
@@ -54,7 +54,7 @@ def parse_args():
     # evaluation only
     parser.add_argument('--eval', action='store_true', default=False,
                         help='evaluation only')
-    parser.add_argument('--no-val', action='store_true', default=True,
+    parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
     # the parser
     args = parser.parse_args()
@@ -80,10 +80,15 @@ class Trainer(object):
         self.train_loader = data.DataLoader(dataset=train_dataset,
                                             batch_size=args.batch_size,
                                             shuffle=True,
-                                            drop_last=True)
+                                            drop_last=True,
+                                            num_workers=4,
+                                            pin_memory=True,
+                                            persistent_workers=True)
         self.val_loader = data.DataLoader(dataset=val_dataset,
                                           batch_size=1,
-                                          shuffle=False)
+                                          shuffle=False,
+                                          num_workers=2,
+                                          pin_memory=True)
 
         # create network
         self.model = get_fast_scnn(dataset=args.dataset, aux=args.aux)
@@ -104,10 +109,9 @@ class Trainer(object):
                                                         ignore_index=-1).to(args.device)
 
         # optimizer
-        self.optimizer = torch.optim.SGD(self.model.parameters(),
-                                         lr=args.lr,
-                                         momentum=args.momentum,
-                                         weight_decay=args.weight_decay)
+        self.optimizer = torch.optim.AdamW(self.model.parameters(),
+                                           lr=args.lr,
+                                           weight_decay=1e-4)
 
         # lr scheduling
         self.lr_scheduler = LRScheduler(mode='poly', base_lr=args.lr, nepochs=args.epochs,
@@ -142,7 +146,7 @@ class Trainer(object):
                 cur_iters += 1
                 if cur_iters % 10 == 0:
                     print('Epoch: [%2d/%2d] Iter [%4d/%4d] || Time: %4.4f sec || lr: %.8f || Loss: %.4f' % (
-                        epoch, args.epochs, i + 1, len(self.train_loader),
+                        epoch, self.args.epochs, i + 1, len(self.train_loader),
                         time.time() - start_time, cur_lr, loss.item()))
 
             if self.args.no_val:
@@ -186,7 +190,7 @@ def save_checkpoint(model, args, is_best=False):
     if is_best:
         best_filename = '{}_{}_best_model.pth'.format(args.model, args.dataset)
         best_filename = os.path.join(directory, best_filename)
-        shutil.copyfile(filename, best_filename)
+        shutil.copyfile(save_path, best_filename)
 
 
 if __name__ == '__main__':
