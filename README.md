@@ -85,6 +85,12 @@ CPU / NPU Deployment
 
 ---
 
+## Demo
+
+<p align="center">
+  <img src="demo/FLOOR_GIF.gif" width="350">
+</p>
+
 ## 3. Dataset
 
 A custom indoor floor segmentation dataset was used for training and
@@ -461,10 +467,14 @@ Fast-SCNN-pytorch/
 │   ├── fast_scnn_floor_best_model.pth
 │   ├── fast_scnn_floor.onnx
 │   ├── openvino_model.xml
-│   └── openvino_model.bin
+│   |── openvino_model.bin
+|   ├── openvino_int8.xml
+│   └── openvino_int8.bin
 │
-└── test_videos/
-    └── input.mp4
+|── test_videos/
+|   └── input.mp4
+└── outputs/
+    └── output_openvino_3.mp4
 ```
 
 ---
