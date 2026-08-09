@@ -104,8 +104,6 @@ datasets/
 # Generated Video / Output Files
 # ==========================================================
 
-outputs/
-output_*.mp4
 *.avi
 *.mov
 
@@ -115,3 +113,4 @@ output_*.mp4
 
 # Keep prediction_mask.png and overlay.png on GitHub.
 # Do NOT ignore them.
+Benchmark Report.pdf
