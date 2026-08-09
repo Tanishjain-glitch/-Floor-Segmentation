@@ -1,0 +1,9 @@
+torch>=2.1.0
+torchvision>=0.16.0
+opencv-python>=4.9.0
+numpy>=1.24.0
+Pillow>=10.0.0
+onnx>=1.15.0
+onnxruntime>=1.17.0
+openvino>=2024.0.0
+nncf>=2.9.0
