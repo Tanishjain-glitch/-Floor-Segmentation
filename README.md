@@ -6,6 +6,10 @@ through **PyTorch, ONNX Runtime, and Intel OpenVINO**.
 The system takes an RGB image or video stream and produces a segmentation mask
 identifying the **floor region**.
 
+<p align="center">
+  <img src="assets/demo.gif" alt="Floor segmentation demo" width="700">
+</p>
+
 ---
 
 ## 1. Overview
@@ -85,12 +89,6 @@ CPU / NPU Deployment
 
 ---
 
-## Demo
-
-<p align="center">
-  <img src="demo/FLOOR_GIF.gif" width="350">
-</p>
-
 ## 3. Dataset
 
 A custom indoor floor segmentation dataset was used for training and
@@ -103,7 +101,7 @@ represent non-floor/background regions.
 
 | Split      |    Images |
 | ---------- | --------: |
-| Training   | **7,148** |
+| Training   | **7,128** |
 | Validation |   **681** |
 | Testing    |   **681** |
 
@@ -135,6 +133,11 @@ datasets/
 The dataset contains one manually annotated foreground class, **Floor**.
 
 ---
+## Demo
+
+<p align="center">
+  <img src="demo/FLOOR_GIF.gif" width="350">
+</p>
 
 ## 4. Preprocessing and Augmentation
 
@@ -224,8 +227,8 @@ ONNX Runtime was used to verify the exported model and benchmark inference.
 
 ```text
 Execution Provider : CPUExecutionProvider
-Latency            : 9.38 ms
-Throughput         : 106.63 FPS
+Latency            : 11.93 ms
+Throughput         : 83.86 FPS
 ```
 
 > The ONNX benchmark measures the ONNX Runtime inference call and should not
@@ -282,10 +285,16 @@ python video_inference_pytorch.py
 
 ### OpenVINO
 
-Run OpenVINO video inference:
+Run OpenVINO video inference (FP32):
 
 ```bash
 python video_inference_openvino.py
+```
+
+Run OpenVINO video inference (INT8, **final deployment configuration**):
+
+```bash
+python video_inference_openvino_int8.py
 ```
 
 The inference scripts:
@@ -308,10 +317,10 @@ The inference scripts:
 
 | Runtime           | Device    | Preprocess | Inference | Postprocess | Total Latency |       FPS |
 | ----------------- | --------- | ---------: | --------: | ----------: | ------------: | --------: |
-| **PyTorch**       | RTX 5060  |    8.95 ms |   7.28 ms |     5.54 ms |  **21.76 ms** | **45.96** |
-| **PyTorch**       | Intel CPU |   16.70 ms |  94.77 ms |     8.65 ms | **120.11 ms** |  **8.33** |
-| **OpenVINO FP32** | Intel CPU |    8.86 ms |  18.17 ms |    11.41 ms |  **38.44 ms** | **26.02** |
-| **OpenVINO INT8** | Intel CPU |   12.48 ms |  14.65 ms |    14.29 ms |  **41.41 ms** | **24.15** |
+| **PyTorch**       | RTX 5060  |    8.53 ms |   7.37 ms |     5.11 ms |  **21.02 ms** | **47.58** |
+| **PyTorch**       | Intel CPU |    8.12 ms |  48.05 ms |     4.72 ms |  **60.88 ms** | **16.42** |
+| **OpenVINO FP32** | Intel CPU |    7.09 ms |  12.70 ms |     8.90 ms |  **28.68 ms** | **34.86** |
+| **OpenVINO INT8** | Intel CPU |    6.78 ms |   9.21 ms |     8.21 ms |  **24.20 ms** | **41.33** |
 
 ### Performance Target
 
@@ -322,15 +331,15 @@ Minimum Rate    : 2 Hz
 Maximum Latency : 500 ms/frame
 ```
 
-Final OpenVINO FP32 result:
+Final OpenVINO INT8 result:
 
 ```text
-Latency : 38.44 ms/frame
-FPS     : 26.02
-Hz      : 26.02
+Latency : 24.20 ms/frame
+FPS     : 41.33
+Hz      : 41.33
 ```
 
-The OpenVINO FP32 implementation therefore comfortably exceeds the required
+The OpenVINO INT8 implementation therefore comfortably exceeds the required
 real-time deployment target.
 
 ---
@@ -342,23 +351,26 @@ Post-training INT8 quantization was evaluated using **NNCF**.
 ### Inference Latency
 
 ```text
-FP32 : 18.17 ms
-INT8 : 14.65 ms
+FP32 : 12.70 ms
+INT8 : 9.21 ms
 ```
 
-INT8 reduced the model inference latency by approximately **19%**.
+INT8 reduced the model inference latency by approximately **27.5%**.
 
-However, the complete video pipeline became slightly slower:
+The complete video pipeline improved as well:
 
 ```text
-FP32 : 38.44 ms/frame
-INT8 : 41.41 ms/frame
+FP32 : 28.68 ms/frame
+INT8 : 24.20 ms/frame
 ```
 
-The increase was mainly due to preprocessing and post-processing overhead.
+This is roughly a **15.6% reduction in end-to-end latency**, closely tracking
+the inference-side speedup rather than being offset by fixed preprocessing/
+postprocessing overhead.
 
-Therefore, **OpenVINO FP32 was retained as the preferred deployment
-configuration**.
+Therefore, **OpenVINO INT8 was selected as the final deployment
+configuration**, offering the lowest latency and highest throughput of any
+configuration tested.
 
 ---
 
@@ -467,14 +479,10 @@ Fast-SCNN-pytorch/
 │   ├── fast_scnn_floor_best_model.pth
 │   ├── fast_scnn_floor.onnx
 │   ├── openvino_model.xml
-│   |── openvino_model.bin
-|   ├── openvino_int8.xml
-│   └── openvino_int8.bin
+│   └── openvino_model.bin
 │
-|── test_videos/
-|   └── input.mp4
-└── outputs/
-    └── output_openvino_3.mp4
+└── test_videos/
+    └── input.mp4
 ```
 
 ---
@@ -513,12 +521,14 @@ Real-Time Floor Segmentation
 
 **Deployment Performance**
 
-* PyTorch CUDA: **45.96 FPS**
-* PyTorch CPU: **8.33 FPS**
-* ONNX Runtime: **106.63 FPS / 9.38 ms**
-* OpenVINO FP32: **26.02 FPS / 38.44 ms**
-* OpenVINO INT8: **24.15 FPS / 41.41 ms**
+* PyTorch CUDA: **47.58 FPS / 21.02 ms**
+* PyTorch CPU: **16.42 FPS / 60.88 ms**
+* ONNX Runtime: **83.86 FPS / 11.93 ms**
+* OpenVINO FP32: **34.86 FPS / 28.68 ms**
+* OpenVINO INT8: **41.33 FPS / 24.20 ms**
 
-The **OpenVINO FP32 configuration** was selected as the final Intel-oriented
-deployment because it exceeds the required **2 Hz real-time target** while
-maintaining the validated floor segmentation performance.
+The **OpenVINO INT8 configuration** was selected as the final Intel-oriented
+deployment because it delivers the lowest latency and highest throughput of
+any configuration tested, comfortably exceeding the required **2 Hz
+real-time target** while maintaining the validated floor segmentation
+performance.
