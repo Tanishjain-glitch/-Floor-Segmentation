@@ -101,9 +101,9 @@ represent non-floor/background regions.
 
 | Split      |    Images |
 | ---------- | --------: |
-| Training   | **8,000** |
-| Validation |   **310** |
-| Testing    |   **166** |
+| Training   | **7,128** |
+| Validation |   **681** |
+| Testing    |   **681** |
 
 ### Dataset Structure
 
