@@ -97,6 +97,8 @@ evaluation.
 Only the **Floor** region is manually annotated. All remaining pixels
 represent non-floor/background regions.
 
+ 🤗 **Dataset:** [Floor Segmentation Dataset](https://huggingface.co/datasets/Tanishjain9/floor-segmentation-dataset)
+
 ### Dataset Split
 
 | Split      |    Images |
